@@ -1,5 +1,7 @@
 import { MapShell } from "@/components/map/MapShell";
 import { CagisLayerGroup } from "@/components/map/CagisLayerGroup";
+import { PatchworkNodeLayer } from "@/components/map/PatchworkNodeLayer";
+import { NodeInspector } from "@/components/hud/NodeInspector";
 import { AuthBadge } from "@/components/hud/AuthBadge";
 
 export default function Home() {
@@ -7,6 +9,8 @@ export default function Home() {
     <main className="relative h-dvh w-full overflow-hidden bg-navy">
       <MapShell>
         <CagisLayerGroup />
+        <PatchworkNodeLayer />
+        <NodeInspector />
       </MapShell>
 
       <header className="hud-panel pointer-events-none absolute left-4 top-4 px-3 py-2">

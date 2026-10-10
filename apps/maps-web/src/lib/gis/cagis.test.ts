@@ -3,12 +3,14 @@ import {
   CAGIS_LAYERS,
   CagisQueryError,
   bboxContains,
+  buildParcelPointQueryUrl,
   buildPointQueryUrl,
   buildViewportQueryUrl,
   degreesPerPixel,
   fetchLayerFeatures,
   formatParcelAddress,
   padBBox,
+  queryParcelAtPoint,
   queryZoningAtPoint,
   type BBox,
 } from "./cagis";
@@ -161,5 +163,25 @@ describe("formatParcelAddress", () => {
     expect(formatParcelAddress({ ADDRNO: "100", ADDRST: "MAIN", ADDRSF: "ST" })).toBe("100 MAIN ST");
     expect(formatParcelAddress({ ADDRNO: null, ADDRST: null, ADDRSF: null })).toBeNull();
     expect(formatParcelAddress(undefined)).toBeNull();
+  });
+});
+
+describe("queryParcelAtPoint", () => {
+  it("builds a geometry-returning point query against the parcel layer", () => {
+    const url = new URL(buildParcelPointQueryUrl({ lng: -84.51, lat: 39.1 }));
+    expect(url.pathname).toContain("/COUNTYWIDE/Cadastral/MapServer/0/query");
+    expect(url.searchParams.get("returnGeometry")).toBe("true");
+    expect(url.searchParams.get("geometryType")).toBe("esriGeometryPoint");
+    expect(url.searchParams.get("f")).toBe("geojson");
+  });
+
+  it("returns the containing parcel feature, or null when no parcel covers the point", async () => {
+    const hit = vi.fn().mockResolvedValue(jsonResponse(collection(1)));
+    await expect(queryParcelAtPoint({ lng: 1, lat: 1 }, { fetchImpl: hit })).resolves.toMatchObject({
+      type: "Feature",
+      properties: { PARCELID: "P0" },
+    });
+    const miss = vi.fn().mockResolvedValue(jsonResponse(collection(0)));
+    await expect(queryParcelAtPoint({ lng: 1, lat: 1 }, { fetchImpl: miss })).resolves.toBeNull();
   });
 });

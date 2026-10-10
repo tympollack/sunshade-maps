@@ -149,6 +149,18 @@ export function buildPointQueryUrl(layer: CagisLayerConfig, point: LngLat): stri
   return `${CAGIS_BASE_URL}/${layer.path}/query?${params.toString()}`;
 }
 
+/** GeoJSON (with geometry) query for the single parcel polygon containing `point`. */
+export function buildParcelPointQueryUrl(point: LngLat): string {
+  const params = baseParams(CAGIS_LAYERS.parcels);
+  params.set("geometry", `${point.lng},${point.lat}`);
+  params.set("geometryType", "esriGeometryPoint");
+  params.set("returnGeometry", "true");
+  params.set("geometryPrecision", "6");
+  params.set("resultRecordCount", "1");
+  params.set("f", "geojson");
+  return `${CAGIS_BASE_URL}/${CAGIS_LAYERS.parcels.path}/query?${params.toString()}`;
+}
+
 // ─── Response handling ──────────────────────────────────────────────────────
 
 async function getJson(url: string, { signal, fetchImpl }: QueryOptions): Promise<unknown> {
@@ -238,6 +250,12 @@ export async function queryZoningAtPoint(point: LngLat, options: QueryOptions = 
     description: stringOrNull(attrs.ZONE_DESCRIPTION),
     jurisdiction: stringOrNull(attrs.JURISDICTION),
   };
+}
+
+/** Resolves the parcel polygon containing a coordinate, or `null` when none does. */
+export async function queryParcelAtPoint(point: LngLat, options: QueryOptions = {}): Promise<GeoJSON.Feature | null> {
+  const { features } = parseFeatureCollection(await getJson(buildParcelPointQueryUrl(point), options));
+  return features[0] ?? null;
 }
 
 function stringOrNull(value: unknown): string | null {

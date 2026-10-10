@@ -3,6 +3,7 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type { LngLat } from "@/lib/map/coordinates";
+import type { PatchworkNodeSelection } from "@/lib/patchwork/nodes";
 
 /** Parcel attributes extracted on click (populated by GIS layer groups). */
 export interface ParcelSelection {
@@ -24,6 +25,9 @@ interface InspectorState {
   setZoom: (zoom: number) => void;
   selectedParcel: ParcelSelection | null;
   setSelectedParcel: (parcel: ParcelSelection | null) => void;
+  /** PatchWork node selected on the map (azimuth, timestamp, verification hash). */
+  selectedNode: PatchworkNodeSelection | null;
+  setSelectedNode: (node: PatchworkNodeSelection | null) => void;
 }
 
 const InspectorContext = createContext<InspectorState | null>(null);
@@ -33,10 +37,22 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
   const [reticle, setReticle] = useState<LngLat | null>(null);
   const [zoom, setZoom] = useState<number | null>(null);
   const [selectedParcel, setSelectedParcel] = useState<ParcelSelection | null>(null);
+  const [selectedNode, setSelectedNode] = useState<PatchworkNodeSelection | null>(null);
 
   const value = useMemo<InspectorState>(
-    () => ({ map, setMap, reticle, setReticle, zoom, setZoom, selectedParcel, setSelectedParcel }),
-    [map, reticle, zoom, selectedParcel],
+    () => ({
+      map,
+      setMap,
+      reticle,
+      setReticle,
+      zoom,
+      setZoom,
+      selectedParcel,
+      setSelectedParcel,
+      selectedNode,
+      setSelectedNode,
+    }),
+    [map, reticle, zoom, selectedParcel, selectedNode],
   );
 
   return <InspectorContext.Provider value={value}>{children}</InspectorContext.Provider>;
