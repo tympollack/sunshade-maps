@@ -1,10 +1,13 @@
 import { MapShell } from "@/components/map/MapShell";
+import { CagisLayerGroup } from "@/components/map/CagisLayerGroup";
 import { AuthBadge } from "@/components/hud/AuthBadge";
 
 export default function Home() {
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-navy">
-      <MapShell />
+      <MapShell>
+        <CagisLayerGroup />
+      </MapShell>
 
       <header className="hud-panel pointer-events-none absolute left-4 top-4 px-3 py-2">
         <div className="hud-label">SunShade · Civic Field Guide</div>
