@@ -1,4 +1,5 @@
 import { MapShell } from "@/components/map/MapShell";
+import { ValerieSentimentLayer } from "@/components/map/ValerieSentimentLayer";
 import { CagisLayerGroup } from "@/components/map/CagisLayerGroup";
 import { PatchworkNodeLayer } from "@/components/map/PatchworkNodeLayer";
 import { NodeInspector } from "@/components/hud/NodeInspector";
@@ -8,6 +9,7 @@ export default function Home() {
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-navy">
       <MapShell>
+        <ValerieSentimentLayer />
         <CagisLayerGroup />
         <PatchworkNodeLayer />
         <NodeInspector />
