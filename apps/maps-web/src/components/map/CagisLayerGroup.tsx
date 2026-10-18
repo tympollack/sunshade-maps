@@ -56,8 +56,16 @@ interface LoadedWindow {
  * Clicking a parcel stores its PARCELID and zoning designation in the Inspector context.
  */
 export function CagisLayerGroup() {
-  const { map, setSelectedParcel } = useInspector();
+  const { map, selectedParcel, setSelectedParcel } = useInspector();
   const [status, setStatus] = useState<StatusMap>(INITIAL_STATUS);
+
+  // The Inspector drawer can clear the selection from outside this component; drop the outline too.
+  useEffect(() => {
+    if (!map || selectedParcel) return;
+    if (map.getStyle() && map.getLayer(PARCEL_SELECTED)) {
+      map.setFilter(PARCEL_SELECTED, ["==", ["get", "PARCELID"], ""]);
+    }
+  }, [map, selectedParcel]);
 
   useEffect(() => {
     if (!map) return;

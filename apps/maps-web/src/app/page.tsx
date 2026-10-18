@@ -3,7 +3,7 @@ import { FederalBaselineLayers } from "@/components/map/FederalBaselineLayers";
 import { ValerieSentimentLayer } from "@/components/map/ValerieSentimentLayer";
 import { CagisLayerGroup } from "@/components/map/CagisLayerGroup";
 import { PatchworkNodeLayer } from "@/components/map/PatchworkNodeLayer";
-import { NodeInspector } from "@/components/hud/NodeInspector";
+import { InspectorDrawer } from "@/components/hud/InspectorDrawer";
 import { AuthBadge } from "@/components/hud/AuthBadge";
 
 export default function Home() {
@@ -14,7 +14,7 @@ export default function Home() {
         <ValerieSentimentLayer />
         <CagisLayerGroup />
         <PatchworkNodeLayer />
-        <NodeInspector />
+        <InspectorDrawer />
       </MapShell>
 
       <header className="hud-panel pointer-events-none absolute left-4 top-4 px-3 py-2">

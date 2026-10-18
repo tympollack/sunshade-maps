@@ -83,7 +83,7 @@ export class CagisQueryError extends Error {
 
 type FetchLike = (input: string, init?: { signal?: AbortSignal }) => Promise<Response>;
 
-interface QueryOptions {
+export interface QueryOptions {
   signal?: AbortSignal;
   fetchImpl?: FetchLike;
 }
@@ -163,7 +163,7 @@ export function buildParcelPointQueryUrl(point: LngLat): string {
 
 // ─── Response handling ──────────────────────────────────────────────────────
 
-async function getJson(url: string, { signal, fetchImpl }: QueryOptions): Promise<unknown> {
+export async function getJson(url: string, { signal, fetchImpl }: QueryOptions): Promise<unknown> {
   const doFetch: FetchLike = fetchImpl ?? ((input, init) => fetch(input, init));
   let response: Response;
   try {
@@ -199,7 +199,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function parseFeatureCollection(body: unknown): { features: GeoJSON.Feature[]; exceeded: boolean } {
+export function parseFeatureCollection(body: unknown): { features: GeoJSON.Feature[]; exceeded: boolean } {
   if (!isRecord(body) || body.type !== "FeatureCollection" || !Array.isArray(body.features)) {
     throw new CagisQueryError("CAGIS returned an unexpected GeoJSON payload");
   }
@@ -258,7 +258,7 @@ export async function queryParcelAtPoint(point: LngLat, options: QueryOptions = 
   return features[0] ?? null;
 }
 
-function stringOrNull(value: unknown): string | null {
+export function stringOrNull(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;

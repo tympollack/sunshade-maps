@@ -11,7 +11,7 @@
  * H3 resolution: Valerie stores `h3_hex_index` at resolution 7 (~5 km2). See the
  * 20261010182000_valerie_h3_sentiment_cells_rpc migration for details.
  */
-import { cellToBoundary, isValidCell, polygonToCells } from "h3-js";
+import { cellToBoundary, getResolution, isValidCell, polygonToCells } from "h3-js";
 import type { BBox } from "@/lib/gis/cagis";
 
 /** H3 resolution of `valerie.poll_responses.h3_hex_index`. */
@@ -117,4 +117,14 @@ export function viewportCells(bbox: BBox, resolution = VALERIE_H3_RESOLUTION): V
     return { ok: false, error: `Viewport covers ${cells.length} cells (max ${MAX_CELLS_PER_REQUEST}); zoom in` };
   }
   return { ok: true, cells };
+}
+
+export type CellParamResult = { ok: true; cell: string } | { ok: false; error: string };
+
+/** Validates a single `h3` query parameter: a valid cell at Valerie's stored resolution. */
+export function parseCellParam(raw: string): CellParamResult {
+  if (!isValidCell(raw) || getResolution(raw) !== VALERIE_H3_RESOLUTION) {
+    return { ok: false, error: `h3 must be a valid resolution-${VALERIE_H3_RESOLUTION} H3 cell` };
+  }
+  return { ok: true, cell: raw };
 }

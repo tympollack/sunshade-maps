@@ -5,11 +5,26 @@ import {
   MAX_CELLS_PER_REQUEST,
   VALERIE_H3_RESOLUTION,
   confidenceHeight,
+  parseCellParam,
   sentimentColor,
   sentimentRowsToFeatureCollection,
   viewportCells,
   type SentimentRow,
 } from "./sentiment";
+
+describe("parseCellParam", () => {
+  it("accepts a resolution-7 cell", () => {
+    expect(parseCellParam(latLngToCell(39.1031, -84.512, VALERIE_H3_RESOLUTION))).toEqual({
+      ok: true,
+      cell: latLngToCell(39.1031, -84.512, VALERIE_H3_RESOLUTION),
+    });
+  });
+  it("rejects other resolutions and garbage", () => {
+    expect(parseCellParam(latLngToCell(39.1031, -84.512, 8)).ok).toBe(false);
+    expect(parseCellParam("not-a-cell").ok).toBe(false);
+    expect(parseCellParam("").ok).toBe(false);
+  });
+});
 
 const CELL = latLngToCell(39.1031, -84.512, VALERIE_H3_RESOLUTION);
 
