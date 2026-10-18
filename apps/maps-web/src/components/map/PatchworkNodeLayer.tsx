@@ -10,6 +10,7 @@ import {
   type PatchworkNodeCollection,
   type PatchworkNodeSelection,
 } from "@/lib/patchwork/nodes";
+import { LayerPanel } from "@/components/hud/LayerPanel";
 import { useInspector } from "./InspectorContext";
 
 const SOURCE = "patchwork-nodes";
@@ -367,13 +368,13 @@ export function PatchworkNodeLayer() {
   if (!map) return null;
 
   return (
-    <div className="hud-panel pointer-events-none absolute bottom-32 right-4 max-w-64 px-3 py-2 font-mono text-xs">
+    <LayerPanel>
       <div className="hud-label">PatchWork · Verified Nodes</div>
       <div className="mt-1 flex justify-between gap-3 text-ink-muted">
         <span>In view</span>
         <span className="tabular-nums text-ink">{describe(status)}</span>
       </div>
-    </div>
+    </LayerPanel>
   );
 }
 

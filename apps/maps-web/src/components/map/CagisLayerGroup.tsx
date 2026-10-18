@@ -14,6 +14,7 @@ import {
   type BBox,
   type CagisLayerKey,
 } from "@/lib/gis/cagis";
+import { LayerPanel } from "@/components/hud/LayerPanel";
 import { useInspector } from "./InspectorContext";
 
 const SOURCE = (key: CagisLayerKey) => `cagis-${key}`;
@@ -284,7 +285,7 @@ export function CagisLayerGroup() {
   if (!map) return null;
 
   return (
-    <div className="hud-panel pointer-events-none absolute bottom-4 right-4 max-w-64 px-3 py-2 font-mono text-xs">
+    <LayerPanel>
       <div className="hud-label">CAGIS · Hamilton Co.</div>
       <ul className="mt-1 space-y-0.5">
         {(Object.keys(CAGIS_LAYERS) as CagisLayerKey[]).map((key) => (
@@ -294,7 +295,7 @@ export function CagisLayerGroup() {
           </li>
         ))}
       </ul>
-    </div>
+    </LayerPanel>
   );
 }
 

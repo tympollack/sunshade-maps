@@ -28,6 +28,9 @@ interface InspectorState {
   /** PatchWork node selected on the map (azimuth, timestamp, verification hash). */
   selectedNode: PatchworkNodeSelection | null;
   setSelectedNode: (node: PatchworkNodeSelection | null) => void;
+  /** DOM host for stacked layer HUD panels (see LayerPanel); null until MapShell mounts. */
+  panelHost: HTMLElement | null;
+  setPanelHost: (host: HTMLElement | null) => void;
 }
 
 const InspectorContext = createContext<InspectorState | null>(null);
@@ -38,6 +41,7 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
   const [zoom, setZoom] = useState<number | null>(null);
   const [selectedParcel, setSelectedParcel] = useState<ParcelSelection | null>(null);
   const [selectedNode, setSelectedNode] = useState<PatchworkNodeSelection | null>(null);
+  const [panelHost, setPanelHost] = useState<HTMLElement | null>(null);
 
   const value = useMemo<InspectorState>(
     () => ({
@@ -51,8 +55,10 @@ export function InspectorProvider({ children }: { children: ReactNode }) {
       setSelectedParcel,
       selectedNode,
       setSelectedNode,
+      panelHost,
+      setPanelHost,
     }),
-    [map, reticle, zoom, selectedParcel, selectedNode],
+    [map, reticle, zoom, selectedParcel, selectedNode, panelHost],
   );
 
   return <InspectorContext.Provider value={value}>{children}</InspectorContext.Provider>;

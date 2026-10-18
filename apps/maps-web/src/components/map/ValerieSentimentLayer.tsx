@@ -9,6 +9,7 @@ import {
   SENTIMENT_RAMP,
   type SentimentCollection,
 } from "@/lib/valerie/sentiment";
+import { LayerPanel } from "@/components/hud/LayerPanel";
 import { useInspector } from "./InspectorContext";
 
 const SOURCE = "valerie-sentiment";
@@ -66,17 +67,21 @@ export function ValerieSentimentLayer() {
     const activeMap = map;
 
     activeMap.addSource(SOURCE, { type: "geojson", data: EMPTY });
-    activeMap.addLayer({
-      id: LAYER,
-      type: "fill-extrusion",
-      source: SOURCE,
-      paint: {
-        "fill-extrusion-color": COLOR,
-        "fill-extrusion-height": HEIGHT,
-        "fill-extrusion-base": 0,
-        "fill-extrusion-opacity": 0.6,
+    const beforeId = activeMap.getLayer("cagis-zoning-fill") ? "cagis-zoning-fill" : undefined;
+    activeMap.addLayer(
+      {
+        id: LAYER,
+        type: "fill-extrusion",
+        source: SOURCE,
+        paint: {
+          "fill-extrusion-color": COLOR,
+          "fill-extrusion-height": HEIGHT,
+          "fill-extrusion-base": 0,
+          "fill-extrusion-opacity": 0.6,
+        },
       },
-    });
+      beforeId,
+    );
 
     let loaded: { bbox: BBox; at: number } | null = null;
     let controller: AbortController | undefined;
@@ -169,7 +174,7 @@ export function ValerieSentimentLayer() {
   const gradient = `linear-gradient(to right, ${SENTIMENT_RAMP.map((s) => s.color).join(", ")})`;
 
   return (
-    <div className="hud-panel absolute bottom-48 right-4 w-64 px-3 py-2 font-mono text-xs">
+    <LayerPanel interactive>
       <div className="flex items-center justify-between gap-3">
         <div className="hud-label">Valerie · Sentiment</div>
         <label className="flex cursor-pointer items-center gap-1.5 text-ink-muted">
@@ -196,7 +201,7 @@ export function ValerieSentimentLayer() {
       <div className="mt-1.5 text-ink" aria-live="polite">
         {describe(status)}
       </div>
-    </div>
+    </LayerPanel>
   );
 }
 
