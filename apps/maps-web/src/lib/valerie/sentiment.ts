@@ -9,7 +9,7 @@
  *     ids, GPS points, comments, or exact respondent counts.
  *
  * H3 resolution: Valerie stores `h3_hex_index` at resolution 7 (~5 km2). See the
- * 20261010182000_valerie_h3_sentiment_cells_rpc migration for details.
+ * 20261028100300_valerie_h3_sentiment_cells_rpc migration for details.
  */
 import { cellToBoundary, getResolution, isValidCell, polygonToCells } from "h3-js";
 import type { BBox } from "@/lib/gis/cagis";
