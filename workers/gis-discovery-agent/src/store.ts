@@ -1,11 +1,40 @@
 import type { DiscoveryJob, DiscoveryOutcome, DiscoveryStore, FetchLike } from "./types";
 
 const FIPS_RE = /^\d{5}$/;
+const LAYER_TYPE_RE = /^[a-z_]+$/;
+
+/** Hosts the service-role key may be sent to unless the deployment overrides the list. */
+export const DEFAULT_ALLOWED_HOST_SUFFIXES: readonly string[] = [".supabase.co", ".sunshade.icu"];
+
+/**
+ * The service-role key is attached to every request, so the target origin is validated up front:
+ * https only, no credentials/port, and the host must end with an allowed suffix. Throws otherwise.
+ */
+export function assertTrustedSupabaseUrl(rawUrl: string, allowedSuffixes: readonly string[] = DEFAULT_ALLOWED_HOST_SUFFIXES): URL {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new Error("SUPABASE_URL is not a valid URL");
+  }
+  const host = url.hostname.toLowerCase();
+  const allowed = allowedSuffixes.some((suffix) => host.endsWith(suffix.toLowerCase()));
+  if (url.protocol !== "https:" || url.username || url.password || (url.port && url.port !== "443") || !allowed) {
+    throw new Error("SUPABASE_URL is not an allowed https origin; refusing to send the service-role key");
+  }
+  return url;
+}
 
 /** Supabase PostgREST store (service role; `maps` schema via Content-Profile). */
-export function createSupabaseStore(config: { url: string; serviceRoleKey: string; fetchImpl?: FetchLike }): DiscoveryStore {
+export function createSupabaseStore(config: {
+  url: string;
+  serviceRoleKey: string;
+  allowedHostSuffixes?: readonly string[];
+  fetchImpl?: FetchLike;
+}): DiscoveryStore {
   const doFetch: FetchLike = config.fetchImpl ?? ((input, init) => fetch(input, init));
-  const base = `${config.url.replace(/\/$/, "")}/rest/v1`;
+  const origin = assertTrustedSupabaseUrl(config.url, config.allowedHostSuffixes).origin;
+  const base = `${origin}/rest/v1`;
   const headers = (extra: Record<string, string> = {}) => ({
     apikey: config.serviceRoleKey,
     Authorization: `Bearer ${config.serviceRoleKey}`,
@@ -50,6 +79,17 @@ export function createSupabaseStore(config: { url: string; serviceRoleKey: strin
             body: JSON.stringify(outcome.layers.map((l) => ({ ...l, jurisdiction_id: jurisdictionId, last_verified: now }))),
           }),
           "layer upsert",
+        );
+
+        // Rediscovery is authoritative: layer types that did not re-verify this time are removed so
+        // obsolete endpoints never survive as "current" once the county is active again.
+        const keep = [...new Set(outcome.layers.map((l) => l.layer_type))].filter((t) => LAYER_TYPE_RE.test(t));
+        await ok(
+          await doFetch(
+            `${base}/jurisdiction_layers?jurisdiction_id=eq.${encodeURIComponent(jurisdictionId)}&layer_type=not.in.(${keep.join(",")})`,
+            { method: "DELETE", headers: headers() },
+          ),
+          "obsolete layer cleanup",
         );
       }
 

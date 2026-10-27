@@ -99,8 +99,16 @@ function toSelection(props: Record<string, unknown>, lng: number, lat: number): 
  * it to the Inspector HUD and highlights the CAGIS parcel it sits on.
  */
 export function PatchworkNodeLayer() {
-  const { map, setSelectedNode } = useInspector();
+  const { map, selectedNode, setSelectedNode } = useInspector();
   const [status, setStatus] = useState<Status>({ state: "below-min-zoom" });
+
+  // The Inspector drawer can clear the selection from outside this component; drop the node
+  // highlight and the parcel outline too.
+  useEffect(() => {
+    if (!map || selectedNode || !map.getStyle()) return;
+    if (map.getLayer(SELECTED)) map.setFilter(SELECTED, ["==", ["get", "node_id"], ""]);
+    (map.getSource(PARCEL_SOURCE) as GeoJSONSource | undefined)?.setData(EMPTY);
+  }, [map, selectedNode]);
 
   useEffect(() => {
     if (!map) return;
@@ -257,6 +265,12 @@ export function PatchworkNodeLayer() {
     activeMap.on("moveend", scheduleLoad);
     void load();
 
+    // A stationary map must still pick up nodes that cross their yellow/red expiry, so re-check
+    // at half the data-age window (load() is a no-op while the cached window is still fresh).
+    const refreshTimer = setInterval(() => {
+      if (!document.hidden) void load();
+    }, MAX_DATA_AGE_MS / 2);
+
     // ─── Pulse animation (decaying nodes only; honours reduced motion) ───
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
@@ -344,6 +358,7 @@ export function PatchworkNodeLayer() {
     return () => {
       disposed = true;
       clearTimeout(debounce);
+      clearInterval(refreshTimer);
       cancelAnimationFrame(raf);
       controller?.abort();
       parcelController?.abort();

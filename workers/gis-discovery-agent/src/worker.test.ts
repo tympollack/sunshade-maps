@@ -178,11 +178,16 @@ describe("search", () => {
     expect(results[1].url).toBe("https://b0.gov");
   });
 
-  it("tolerates one failing query but throws when all fail", async () => {
+  it("tolerates one failing query when the other returns results, but retries when nothing came back", async () => {
     const one = { search: vi.fn(async (q: string) => { if (q.includes("parcel")) throw new Error("x"); return [{ title: "", url: "https://b.gov", snippet: "" }]; }) };
     expect(await gatherResults(one, JOB)).toHaveLength(1);
+    const partial = { search: vi.fn(async (q: string) => { if (q.includes("parcel")) throw new Error("x"); return []; }) };
+    await expect(gatherResults(partial, JOB)).rejects.toThrow("no results");
     const all = { search: vi.fn(async () => { throw new Error("down"); }) };
-    await expect(gatherResults(all, JOB)).rejects.toThrow("All search queries failed");
+    await expect(gatherResults(all, JOB)).rejects.toThrow("failed");
+    // Genuinely empty (no failures) is a normal "nothing found" outcome.
+    const empty = { search: vi.fn(async () => []) };
+    expect(await gatherResults(empty, JOB)).toEqual([]);
   });
 });
 
@@ -246,22 +251,33 @@ describe("store", () => {
     return { calls, fetchImpl };
   }
 
-  it("upserts jurisdiction, then layers, then flips status to active", async () => {
+  it("upserts jurisdiction, then layers, prunes obsolete layer types, then flips status to active", async () => {
     const { calls, fetchImpl } = recordingFetch();
     await createSupabaseStore({ url: "https://x.supabase.co", serviceRoleKey: "svc", fetchImpl }).save(JOB, active);
     expect(calls.map((c) => c.method + " " + c.url.split("/rest/v1/")[1])).toEqual([
       "POST civic_jurisdictions?on_conflict=fips_code",
       "POST jurisdiction_layers?on_conflict=jurisdiction_id,layer_type",
+      "DELETE jurisdiction_layers?jurisdiction_id=eq.jid-1&layer_type=not.in.(parcels)",
       "PATCH civic_jurisdictions?id=eq.jid-1",
     ]);
     expect((calls[1].body as { jurisdiction_id: string }[])[0].jurisdiction_id).toBe("jid-1");
-    expect(calls[2].body).toEqual({ discovery_status: "active" });
+    expect(calls[3].body).toEqual({ discovery_status: "active" });
   });
 
-  it("never marks a jurisdiction active when the layer write fails", async () => {
-    const { calls, fetchImpl } = recordingFetch("jurisdiction_layers");
-    await expect(createSupabaseStore({ url: "https://x.supabase.co", serviceRoleKey: "svc", fetchImpl }).save(JOB, active)).rejects.toThrow("layer upsert failed");
-    expect(calls.some((c) => c.method === "PATCH")).toBe(false);
+  it("never marks a jurisdiction active when the layer write or cleanup fails", async () => {
+    for (const failOn of ["on_conflict=jurisdiction_id", "layer_type=not.in"]) {
+      const { calls, fetchImpl } = recordingFetch(failOn);
+      await expect(createSupabaseStore({ url: "https://x.supabase.co", serviceRoleKey: "svc", fetchImpl }).save(JOB, active)).rejects.toThrow("failed");
+      expect(calls.some((c) => c.method === "PATCH")).toBe(false);
+    }
+  });
+
+  it("refuses to send the service-role key to an untrusted origin", () => {
+    for (const url of ["https://evil.example.com", "http://x.supabase.co", "https://x.supabase.co.evil.com", "https://u:p@x.supabase.co", "not a url"]) {
+      expect(() => createSupabaseStore({ url, serviceRoleKey: "svc", fetchImpl: vi.fn() })).toThrow();
+    }
+    expect(() => createSupabaseStore({ url: "https://api.sunshade.icu", serviceRoleKey: "svc", fetchImpl: vi.fn() })).not.toThrow();
+    expect(() => createSupabaseStore({ url: "https://db.custom.test", serviceRoleKey: "svc", allowedHostSuffixes: [".custom.test"], fetchImpl: vi.fn() })).not.toThrow();
   });
 
   it("records failed outcomes without writing layers", async () => {

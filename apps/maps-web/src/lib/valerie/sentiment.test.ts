@@ -115,6 +115,29 @@ describe("viewportCells", () => {
     }
   });
 
+  it("never returns an empty cover for a viewport smaller than one cell (close zoom)", () => {
+    // ~100 m viewport: far smaller than a res-7 cell, so no cell centre falls inside it.
+    const lat = 39.1031;
+    const lng = -84.512;
+    const result = viewportCells([lng - 0.0005, lat - 0.0005, lng + 0.0005, lat + 0.0005]);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.cells.length).toBeGreaterThan(0);
+      expect(result.cells).toContain(CELL);
+    }
+  });
+
+  it("includes the cells under every corner of a mid-size viewport", () => {
+    const bbox = [-84.55, 39.05, -84.45, 39.15] as const;
+    const result = viewportCells(bbox);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      for (const [lat, lng] of [[39.05, -84.55], [39.05, -84.45], [39.15, -84.55], [39.15, -84.45]]) {
+        expect(result.cells).toContain(latLngToCell(lat, lng, VALERIE_H3_RESOLUTION));
+      }
+    }
+  });
+
   it("refuses viewports that would exceed the cell cap", () => {
     const result = viewportCells([-90, 35, -80, 45]);
     expect(result.ok).toBe(false);

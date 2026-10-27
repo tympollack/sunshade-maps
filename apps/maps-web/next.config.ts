@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Workspace packages ship TypeScript sources.
+  transpilePackages: ["@sunshade/spatial"],
 };
 
 export default nextConfig;

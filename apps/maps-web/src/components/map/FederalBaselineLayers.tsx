@@ -11,11 +11,17 @@ import {
 import { LayerPanel } from "@/components/hud/LayerPanel";
 import { useInspector } from "./InspectorContext";
 
-/** Rasters sit beneath every vector/extrusion layer; pick the lowest one that already exists. */
+/**
+ * Rasters sit beneath every vector/extrusion overlay and beneath the basemap's text labels.
+ * Overlays that mount later are added on top of whatever exists, so the first symbol layer is the
+ * anchor when no overlay is present yet (federal rasters mount first).
+ */
 const ABOVE_CANDIDATES = ["valerie-sentiment-extrusion", "cagis-zoning-fill"] as const;
 
 function firstExisting(map: MapLibreMap): string | undefined {
-  return ABOVE_CANDIDATES.find((id) => map.getLayer(id));
+  const overlay = ABOVE_CANDIDATES.find((id) => map.getLayer(id));
+  if (overlay) return overlay;
+  return map.getStyle()?.layers?.find((layer) => layer.type === "symbol")?.id;
 }
 
 /** Adds one federal raster feed to the map while `enabled`, removing it on disable/unmount. */

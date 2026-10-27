@@ -11,7 +11,7 @@
  * H3 resolution: Valerie stores `h3_hex_index` at resolution 7 (~5 km2). See the
  * 20261028100300_valerie_h3_sentiment_cells_rpc migration for details.
  */
-import { cellToBoundary, getResolution, isValidCell, polygonToCells } from "h3-js";
+import { cellToBoundary, getResolution, isValidCell, latLngToCell, polygonToCells } from "h3-js";
 import type { BBox } from "@/lib/gis/cagis";
 
 /** H3 resolution of `valerie.poll_responses.h3_hex_index`. */
@@ -102,21 +102,47 @@ export function sentimentRowsToFeatureCollection(rows: readonly SentimentRow[]):
 
 export type ViewportCellsResult = { ok: true; cells: string[] } | { ok: false; error: string };
 
-/** H3 cells (resolution 7) covering a viewport bbox; refuses viewports that would exceed the cap. */
+/**
+ * H3 cells (resolution 7) covering a viewport bbox; refuses viewports that would exceed the cap.
+ *
+ * `polygonToCells` only returns cells whose CENTRE lies inside the polygon, so a viewport smaller
+ * than one cell (close zoom) can legitimately contain no centres even though a hexagon covers the
+ * whole screen. The bbox is therefore padded by more than a cell edge (~1.2 km at res 7) and the
+ * cells under the corners and centre are always included.
+ */
+const COVER_PAD_DEG = 0.03;
+
 export function viewportCells(bbox: BBox, resolution = VALERIE_H3_RESOLUTION): ViewportCellsResult {
   const [west, south, east, north] = bbox;
+  const midLat = (south + north) / 2;
+  const latPad = COVER_PAD_DEG;
+  // A degree of longitude shrinks with latitude; cap the factor so polar viewports stay bounded.
+  const lngPad = COVER_PAD_DEG / Math.max(0.2, Math.cos((midLat * Math.PI) / 180));
+  const w = Math.max(-180, west - lngPad);
+  const e = Math.min(180, east + lngPad);
+  const s = Math.max(-90, south - latPad);
+  const n = Math.min(90, north + latPad);
   const ring: [number, number][] = [
-    [west, south],
-    [east, south],
-    [east, north],
-    [west, north],
-    [west, south],
+    [w, s],
+    [e, s],
+    [e, n],
+    [w, n],
+    [w, s],
   ];
-  const cells = polygonToCells([ring], resolution, true);
-  if (cells.length > MAX_CELLS_PER_REQUEST) {
-    return { ok: false, error: `Viewport covers ${cells.length} cells (max ${MAX_CELLS_PER_REQUEST}); zoom in` };
+  const cells = new Set(polygonToCells([ring], resolution, true));
+  for (const [lat, lng] of [
+    [south, west],
+    [south, east],
+    [north, west],
+    [north, east],
+    [midLat, (west + east) / 2],
+  ] as const) {
+    cells.add(latLngToCell(lat, lng, resolution));
   }
-  return { ok: true, cells };
+  if (cells.size > MAX_CELLS_PER_REQUEST) {
+    return { ok: false, error: `Viewport covers ${cells.size} cells (max ${MAX_CELLS_PER_REQUEST}); zoom in` };
+  }
+  return { ok: true, cells: [...cells] };
 }
 
 export type CellParamResult = { ok: true; cell: string } | { ok: false; error: string };

@@ -50,6 +50,17 @@ async function loadZip() {
   return new Uint8Array(await response.arrayBuffer());
 }
 
+/** State FIPS -> USPS postal code, used when the archive carries STATEFP but no STUSPS (TIGER/Line). */
+const STATE_FIPS_TO_USPS = {
+  "01": "AL", "02": "AK", "04": "AZ", "05": "AR", "06": "CA", "08": "CO", "09": "CT", "10": "DE",
+  "11": "DC", "12": "FL", "13": "GA", "15": "HI", "16": "ID", "17": "IL", "18": "IN", "19": "IA",
+  "20": "KS", "21": "KY", "22": "LA", "23": "ME", "24": "MD", "25": "MA", "26": "MI", "27": "MN",
+  "28": "MS", "29": "MO", "30": "MT", "31": "NE", "32": "NV", "33": "NH", "34": "NJ", "35": "NM",
+  "36": "NY", "37": "NC", "38": "ND", "39": "OH", "40": "OK", "41": "OR", "42": "PA", "44": "RI",
+  "45": "SC", "46": "SD", "47": "TN", "48": "TX", "49": "UT", "50": "VT", "51": "VA", "53": "WA",
+  "54": "WV", "55": "WI", "56": "WY", "60": "AS", "66": "GU", "69": "MP", "72": "PR", "78": "VI",
+};
+
 /** @returns {Promise<{ geoid: string, name: string, state_code: string, geometry: object }[]>} */
 async function readCounties() {
   const files = unzipSync(await loadZip());
@@ -60,15 +71,24 @@ async function readCounties() {
   const collection = await readShapefile(toBuffer(shp), toBuffer(dbf));
 
   const counties = [];
+  const unresolved = [];
   for (const feature of collection.features) {
-    const { GEOID, NAME, STUSPS } = feature.properties ?? {};
+    const { GEOID, NAME, STUSPS, STATEFP } = feature.properties ?? {};
     if (typeof GEOID !== "string" || !/^\d{5}$/.test(GEOID) || !feature.geometry) continue;
-    counties.push({
-      geoid: GEOID,
-      name: String(NAME ?? "").trim(),
-      state_code: String(STUSPS ?? "").trim().toUpperCase(),
-      geometry: feature.geometry,
-    });
+    const fromColumn = String(STUSPS ?? "").trim().toUpperCase();
+    // Prefer the archive's own abbreviation; otherwise derive it from the state FIPS prefix.
+    const state_code = /^[A-Z]{2}$/.test(fromColumn)
+      ? fromColumn
+      : (STATE_FIPS_TO_USPS[String(STATEFP ?? GEOID.slice(0, 2)).padStart(2, "0")] ?? "");
+    if (!state_code) {
+      unresolved.push(GEOID);
+      continue;
+    }
+    counties.push({ geoid: GEOID, name: String(NAME ?? "").trim(), state_code, geometry: feature.geometry });
+  }
+  // An empty state_code would later fail discovery-job validation for that county; surface it now.
+  if (unresolved.length > 0) {
+    fail(`could not determine the state for ${unresolved.length} counties (e.g. ${unresolved.slice(0, 5).join(", ")})`);
   }
   return counties;
 }

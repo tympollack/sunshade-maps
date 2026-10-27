@@ -1,5 +1,6 @@
 import { MapShell } from "@/components/map/MapShell";
 import { FederalBaselineLayers } from "@/components/map/FederalBaselineLayers";
+import { JurisdictionProbe } from "@/components/map/JurisdictionProbe";
 import { ValerieSentimentLayer } from "@/components/map/ValerieSentimentLayer";
 import { CagisLayerGroup } from "@/components/map/CagisLayerGroup";
 import { PatchworkNodeLayer } from "@/components/map/PatchworkNodeLayer";
@@ -10,6 +11,7 @@ export default function Home() {
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-navy">
       <MapShell>
+        <JurisdictionProbe />
         <FederalBaselineLayers />
         <ValerieSentimentLayer />
         <CagisLayerGroup />

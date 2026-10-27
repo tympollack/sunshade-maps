@@ -47,8 +47,11 @@ export async function gatherResults(search: SearchClient, job: DiscoveryJob, sig
       }
     }
   }
-  if (merged.length === 0 && settled.every((s) => s.status === "rejected")) {
-    throw new Error("All search queries failed");
+  // A failed query may have held the only useful results: with nothing to show for the queries
+  // that DID succeed, treat the run as an infrastructure failure so the queue retries it, instead
+  // of recording "nothing found" for the county.
+  if (merged.length === 0 && settled.some((s) => s.status === "rejected")) {
+    throw new Error("Search queries failed and no results were returned");
   }
   return merged.slice(0, 5);
 }
