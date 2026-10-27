@@ -1,0 +1,16 @@
+name = "gis-discovery-agent"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+# Consumes jobs published by @sunshade/spatial resolveJurisdiction().
+[[queues.consumers]]
+queue = "gis-discovery-jobs"
+max_batch_size = 1
+max_retries = 3
+
+# Secrets - set with `wrangler secret put <NAME>`; never commit values:
+#   SEARCH_API_KEY, SEARCH_ENGINE_ID  (Google Programmable Search)
+#   GEMINI_API_KEY
+#   SUPABASE_SERVICE_ROLE_KEY
+# Plain vars (non-secret) - set per environment, e.g. staging uses the -stag project:
+#   GEMINI_MODEL, SUPABASE_URL
