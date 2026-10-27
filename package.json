@@ -4,7 +4,8 @@
   "description": "maps.sunshade.icu — Civic Field Guide & Spatial Intelligence Engine monorepo",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "workers/*"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=@sunshade/maps-web",
