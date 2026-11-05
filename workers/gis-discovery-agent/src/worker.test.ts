@@ -192,13 +192,21 @@ describe("search", () => {
 });
 
 describe("extract", () => {
-  const results: SearchResult[] = [{ title: "Owsley GIS", url: "https://gis.owsley.example.gov/home", snippet: "parcels" }];
+  const results: SearchResult[] = [
+    { title: "Owsley GIS", url: "https://gis.owsley.example.gov/home", snippet: `parcels: ${PARCEL_LAYER}` },
+  ];
 
-  it("keeps only URLs on hosts present in the search results (anti-hallucination)", () => {
+  it("keeps only URLs that literally appear in the search results (anti-hallucination)", () => {
     expect(
       parseCandidates(
         {
-          parcels: [PARCEL_LAYER, "https://totally-made-up.example.com/arcgis/rest/services/P/MapServer/0", 42],
+          parcels: [
+            PARCEL_LAYER,
+            "https://totally-made-up.example.com/arcgis/rest/services/P/MapServer/0",
+            // real host, invented path: the host alone is not evidence
+            "https://gis.owsley.example.gov/arcgis/rest/services/Invented/FeatureServer/0",
+            42,
+          ],
           zoning: "not-an-array",
           streets: [],
         },

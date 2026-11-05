@@ -93,9 +93,13 @@ describe("nodesToFeatureCollection", () => {
     expect(fc.features).toHaveLength(0);
   });
 
-  it("flags truncation when the row cap is reached", () => {
-    const rows = Array.from({ length: 3 }, (_, i) => row({ node_id: `n${i}` }));
-    expect(nodesToFeatureCollection(rows, 3).truncated).toBe(true);
+  it("flags truncation only when a row beyond the cap exists", () => {
+    const rows = Array.from({ length: 4 }, (_, i) => row({ node_id: `n${i}` }));
+    const over = nodesToFeatureCollection(rows, 3);
+    expect(over.truncated).toBe(true);
+    expect(over.features).toHaveLength(3);
+    // Exactly `limit` rows is a complete result, not a truncated one.
+    expect(nodesToFeatureCollection(rows.slice(0, 3), 3).truncated).toBe(false);
     expect(nodesToFeatureCollection(rows, 4).truncated).toBe(false);
   });
 });

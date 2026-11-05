@@ -30,7 +30,8 @@ export async function GET(request: Request) {
     p_south: south,
     p_east: east,
     p_north: north,
-    p_limit: NODES_MAX_ROWS,
+    // One row over the cap acts as a probe: its presence proves more nodes exist than returned.
+    p_limit: NODES_MAX_ROWS + 1,
   });
 
   if (error) {

@@ -7,11 +7,18 @@ describe("isNonPublicAddress", () => {
     "192.168.1.1", "100.64.0.1", "198.18.0.1", "224.0.0.1", "255.255.255.255",
     "::1", "::", "fc00::1", "fd12:3456::1", "fe80::1", "ff02::1", "::ffff:127.0.0.1", "::ffff:10.0.0.5",
     "garbage", "1.2.3",
+    // IPv4 embedded in IPv6 using hexadecimal groups (what DoH resolvers actually return)
+    "::ffff:7f00:1", "::ffff:a00:5", "::ffff:a9fe:a9fe", "0:0:0:0:0:ffff:c0a8:101", "::ffff:0:7f00:1",
+    "::7f00:1", "::a00:5", "64:ff9b::a00:5", "64:ff9b::7f00:1", "2002:7f00:1::", "2002:a9fe:a9fe::1",
+    "2001:0:4136:e378:8000:63bf:3fff:fdd2", "::ffff:127.0.0.1", "1:2:3", "::1::2", "zz::1",
   ])("treats %s as non-public", (ip) => {
     expect(isNonPublicAddress(ip)).toBe(true);
   });
 
-  it.each(["8.8.8.8", "93.184.216.34", "172.32.0.1", "100.63.255.255", "2606:4700:4700::1111", "::ffff:8.8.8.8"])(
+  it.each([
+    "8.8.8.8", "93.184.216.34", "172.32.0.1", "100.63.255.255", "2606:4700:4700::1111", "::ffff:8.8.8.8",
+    "::ffff:808:808", "64:ff9b::808:808", "2002:808:808::1", "2606:4700:4700:0:0:0:0:1111",
+  ])(
     "treats %s as public",
     (ip) => {
       expect(isNonPublicAddress(ip)).toBe(false);

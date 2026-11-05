@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ExpressionSpecification, GeoJSONSource, MapMouseEvent } from "maplibre-gl";
 import { BLUEPRINT } from "@/lib/theme";
-import { bboxContains, isAbortError, padBBox, queryParcelAtPoint, type BBox } from "@/lib/gis/cagis";
+import { bboxContains, isAbortError, normalizeViewport, padBBox, queryParcelAtPoint, type BBox } from "@/lib/gis/cagis";
 import {
   DECAY_COLORS,
   toDecayState,
@@ -223,12 +223,7 @@ export function PatchworkNodeLayer() {
       }
 
       const b = activeMap.getBounds();
-      const viewport: BBox = [
-        Math.max(-180, b.getWest()),
-        Math.max(-90, b.getSouth()),
-        Math.min(180, b.getEast()),
-        Math.min(90, b.getNorth()),
-      ];
+      const viewport = normalizeViewport(b.getWest(), b.getSouth(), b.getEast(), b.getNorth());
       if (loaded && bboxContains(loaded.bbox, viewport) && Date.now() - loaded.at < MAX_DATA_AGE_MS) return;
 
       controller?.abort();

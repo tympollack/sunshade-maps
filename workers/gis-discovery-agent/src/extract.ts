@@ -26,27 +26,28 @@ export function buildPrompt(job: DiscoveryJob, results: readonly SearchResult[])
   ].join("\n");
 }
 
-/** Keeps only string URLs that literally appeared in the search results (blocks hallucinated hosts). */
+const stripTrailingSlash = (value: string): string => value.replace(/\/+$/, "");
+
+/**
+ * Keeps only string URLs that literally appeared in the search results (title, URL or snippet).
+ * A matching host is not enough: an LLM can invent a plausible layer path on a real host, so the
+ * full URL (ignoring case and a trailing slash) must be present in the result text.
+ */
 export function parseCandidates(raw: unknown, results: readonly SearchResult[]): CandidateEndpoints {
   if (typeof raw !== "object" || raw === null) return {};
-  const allowedHosts = new Set<string>();
-  for (const r of results) {
-    try {
-      allowedHosts.add(new URL(r.url).hostname.toLowerCase());
-    } catch {
-      /* ignore malformed result URL */
-    }
-  }
+  const evidence = results.map((r) => `${r.title}\n${r.url}\n${r.snippet}`.toLowerCase()).join("\n");
   const out: CandidateEndpoints = {};
   for (const type of LAYER_TYPES) {
     const value = (raw as Record<string, unknown>)[type];
     if (!Array.isArray(value)) continue;
     const urls = value.filter((v): v is string => typeof v === "string").filter((u) => {
       try {
-        return allowedHosts.has(new URL(u).hostname.toLowerCase());
+        new URL(u);
       } catch {
         return false;
       }
+      const needle = stripTrailingSlash(u.trim()).toLowerCase();
+      return needle.length > 0 && evidence.includes(needle);
     });
     if (urls.length > 0) out[type] = urls;
   }

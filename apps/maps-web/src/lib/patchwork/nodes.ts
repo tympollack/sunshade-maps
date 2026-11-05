@@ -105,9 +105,15 @@ function toNumberOrNull(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * `rows` may contain up to `limit + 1` entries: callers request one extra row as a probe, so
+ * `truncated` is only true when a row beyond the cap really exists (exactly `limit` rows is a
+ * complete result). Rows past the cap are dropped.
+ */
 export function nodesToFeatureCollection(rows: readonly NodeRow[], limit = NODES_MAX_ROWS): PatchworkNodeCollection {
+  const truncated = rows.length > limit;
   const features: PatchworkNodeFeature[] = [];
-  for (const row of rows) {
+  for (const row of truncated ? rows.slice(0, limit) : rows) {
     const lng = toNumberOrNull(row.longitude);
     const lat = toNumberOrNull(row.latitude);
     if (lng === null || lat === null) continue; // never plot a node at a guessed location
@@ -127,7 +133,7 @@ export function nodesToFeatureCollection(rows: readonly NodeRow[], limit = NODES
       },
     });
   }
-  return { type: "FeatureCollection", features, truncated: rows.length >= limit };
+  return { type: "FeatureCollection", features, truncated };
 }
 
 /** Compass label for an azimuth, e.g. 271.5 → "W". */

@@ -121,12 +121,19 @@ export async function probeArcGisLayer(
   const geometry = body.geometryType ?? "";
   if (type === "streets" ? !/polyline/i.test(geometry) : !/polygon/i.test(geometry)) return null;
 
+  // Parcel and zoning layers are only usable when the identifier the client joins on is present;
+  // otherwise the county would be marked active without a layer anything can consume.
+  const parcelIdField = type === "parcels" ? pickField(body.fields, PARCEL_FIELD) : null;
+  const zoningCodeField = type === "zoning" ? pickField(body.fields, ZONING_FIELD) : null;
+  if (type === "parcels" && !parcelIdField) return null;
+  if (type === "zoning" && !zoningCodeField) return null;
+
   return {
     layer_type: type,
     source_format: "esri_feature",
     endpoint_url: layerUrl,
-    parcel_id_field: type === "parcels" ? pickField(body.fields, PARCEL_FIELD) : null,
-    zoning_code_field: type === "zoning" ? pickField(body.fields, ZONING_FIELD) : null,
+    parcel_id_field: parcelIdField,
+    zoning_code_field: zoningCodeField,
     is_cors_enabled: cors || corsFromGet,
   };
 }

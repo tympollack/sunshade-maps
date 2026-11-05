@@ -102,6 +102,27 @@ export function bboxContains(outer: BBox, inner: BBox): boolean {
   return inner[0] >= outer[0] && inner[1] >= outer[1] && inner[2] <= outer[2] && inner[3] <= outer[3];
 }
 
+/**
+ * Converts raw map bounds into a valid WGS84 query box. After panning across the antimeridian
+ * MapLibre reports bounds on a wrapped world copy (e.g. west 300, east 420); shifting by whole
+ * world widths so the centre lies in [-180, 180] keeps the box valid, then it is clamped. A
+ * viewport that still spans the whole world collapses to the full longitude range.
+ */
+export function normalizeViewport(west: number, south: number, east: number, north: number): BBox {
+  const s = Math.max(-90, south);
+  const n = Math.min(90, north);
+  if (east - west >= 360) return [-180, s, 180, n];
+  // If the bounds straddle 180 (e.g. 170 to 190, or -190 to -170), clamp to [-180, 180] preserving west < east
+  if (west < 180 && east > 180 && west >= -180) {
+    return [Math.max(-180, west), s, 180, n];
+  }
+  if (west < -180 && east > -180 && east <= 180) {
+    return [-180, s, Math.min(180, east), n];
+  }
+  const shift = Math.round((west + east) / 2 / 360) * 360;
+  return [Math.max(-180, west - shift), s, Math.min(180, east - shift), n];
+}
+
 /** Degrees per screen pixel for a 512px-tile web map at `zoom` (used for server-side generalisation). */
 export function degreesPerPixel(zoom: number): number {
   return 360 / (512 * 2 ** zoom);

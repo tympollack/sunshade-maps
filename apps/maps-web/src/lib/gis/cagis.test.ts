@@ -10,6 +10,7 @@ import {
   fetchLayerFeatures,
   formatParcelAddress,
   padBBox,
+  normalizeViewport,
   queryParcelAtPoint,
   queryZoningAtPoint,
   type BBox,
@@ -52,6 +53,25 @@ describe("bbox helpers", () => {
 
   it("halves degrees-per-pixel per zoom level", () => {
     expect(degreesPerPixel(11) / degreesPerPixel(12)).toBeCloseTo(2);
+  });
+});
+
+describe("normalizeViewport", () => {
+  it("passes an ordinary viewport through unchanged", () => {
+    expect(normalizeViewport(-84.7, 38.9, -84.3, 39.3)).toEqual([-84.7, 38.9, -84.3, 39.3]);
+  });
+
+  it("maps bounds on a wrapped world copy back into [-180, 180]", () => {
+    expect(normalizeViewport(300, 10, 340, 20)).toEqual([-60, 10, -20, 20]);
+    expect(normalizeViewport(-420, 10, -380, 20)).toEqual([-60, 10, -20, 20]);
+  });
+
+  it("clamps a viewport straddling the antimeridian to valid longitudes and latitudes", () => {
+    expect(normalizeViewport(170, -95, 190, 95)).toEqual([170, -90, 180, 90]);
+  });
+
+  it("collapses a world-spanning viewport to the full longitude range", () => {
+    expect(normalizeViewport(-400, -10, 400, 10)).toEqual([-180, -10, 180, 10]);
   });
 });
 
