@@ -12,8 +12,10 @@ export const PROBE_TIMEOUT_MS = 8000;
 const MAX_CANDIDATES_PER_LAYER = 3;
 
 const ARCGIS_PATH = /\/rest\/services\/.+\/(FeatureServer|MapServer)(\/\d+)?$/i;
-const PARCEL_FIELD = /^(parcel_?id|parcelid|parcel_?no|parcel_?num(ber)?|parid|pin|apn|parcel)$/i;
-const ZONING_FIELD = /^(zoning|zone|zone_?code|zone_?class|zoning_?code|zoning_?class|zone_?desig(nation)?|zonedist)$/i;
+const PARCEL_FIELD =
+  /^(parcel_?id|parcelid|parcel_?no|parcel_?num(ber)?|parid|pin|tax_?pin|apn|assessor_?parcel_?no|prop_?id|property_?id|acct_?id|acct_?no|folio|parcel|gid|geopin)$/i;
+const ZONING_FIELD =
+  /^(zoning|zone|zone_?code|zone_?class|zoning_?code|zoning_?class|zone_?desig(nation)?|zonedist|zone_?dist(rict)?|zoning_?id|zone_?id|zone_?type|zn_?code|land_?use_?zone)$/i;
 const NAME_HINTS: Record<Exclude<LayerType, "auditor_search">, RegExp> = {
   parcels: /parcel|cadastr|tax\s*lot/i,
   zoning: /zoning|zone district/i,

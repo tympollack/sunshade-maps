@@ -138,6 +138,15 @@ describe("viewportCells", () => {
     }
   });
 
+  it("accepts a high-latitude polar viewport whose spherical area fits under the cell cap", () => {
+    const result = viewportCells([0, 80, 1.5, 90]);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.cells.length).toBeGreaterThan(0);
+      expect(result.cells.length).toBeLessThanOrEqual(MAX_CELLS_PER_REQUEST);
+    }
+  });
+
   it("refuses viewports that would exceed the cell cap", () => {
     const result = viewportCells([-90, 35, -80, 45]);
     expect(result.ok).toBe(false);

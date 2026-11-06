@@ -114,19 +114,21 @@ const COVER_PAD_DEG = 0.03;
 
 /** Mean hexagon area per H3 resolution in km2 (H3 reference table); used to bound work up front. */
 const H3_MEAN_CELL_AREA_KM2: Readonly<Record<number, number>> = { 4: 1770.35, 5: 252.9, 6: 36.13, 7: 5.161, 8: 0.7373, 9: 0.1053 };
-const KM_PER_DEGREE = 111.32;
+/** WGS84 authalic Earth radius in km (matches H3's spherical surface area). */
+const EARTH_RADIUS_KM = 6371.0072;
+const DEG_TO_RAD = Math.PI / 180;
 
 /**
- * Upper-bound estimate of how many cells cover the box, computed from its area alone so an
- * oversized viewport is rejected BEFORE `polygonToCells` allocates anything. Longitude width uses
- * the latitude closest to the equator (the widest part), so the estimate never undercounts.
+ * Spherical-rectangle estimate of how many cells cover `[w, s, e, n]`, computed from
+ * `R^2 * dLambda * (sin(north) - sin(south))` so high-latitude viewports are not overestimated by
+ * their southern edge while oversized boxes are still rejected BEFORE `polygonToCells` allocates.
  */
 function estimateCellCount(w: number, s: number, e: number, n: number, resolution: number): number {
   const cellArea = H3_MEAN_CELL_AREA_KM2[resolution] ?? H3_MEAN_CELL_AREA_KM2[VALERIE_H3_RESOLUTION];
-  const widestLat = s <= 0 && n >= 0 ? 0 : Math.min(Math.abs(s), Math.abs(n));
-  const widthKm = (e - w) * KM_PER_DEGREE * Math.cos((widestLat * Math.PI) / 180);
-  const heightKm = (n - s) * KM_PER_DEGREE;
-  return (widthKm * heightKm) / cellArea;
+  const dLambda = Math.max(0, e - w) * DEG_TO_RAD;
+  const dSinPhi = Math.max(0, Math.sin(n * DEG_TO_RAD) - Math.sin(s * DEG_TO_RAD));
+  const areaKm2 = EARTH_RADIUS_KM * EARTH_RADIUS_KM * dLambda * dSinPhi;
+  return areaKm2 / cellArea;
 }
 
 export function viewportCells(bbox: BBox, resolution = VALERIE_H3_RESOLUTION): ViewportCellsResult {
@@ -139,9 +141,10 @@ export function viewportCells(bbox: BBox, resolution = VALERIE_H3_RESOLUTION): V
   const e = Math.min(180, east + lngPad);
   const s = Math.max(-90, south - latPad);
   const n = Math.min(90, north + latPad);
-  // Hexagons tile with ~15% slack either way; reject clearly oversized boxes without allocating.
+  // H3 cell areas vary by ~2x across an icosahedron face; 2x slack avoids false positives before
+  // the exact `cells.size > MAX_CELLS_PER_REQUEST` check below.
   const estimate = estimateCellCount(w, s, e, n, resolution);
-  if (estimate > MAX_CELLS_PER_REQUEST * 1.5) {
+  if (estimate > MAX_CELLS_PER_REQUEST * 2) {
     return { ok: false, error: `Viewport covers about ${Math.round(estimate)} cells (max ${MAX_CELLS_PER_REQUEST}); zoom in` };
   }
   const ring: [number, number][] = [
