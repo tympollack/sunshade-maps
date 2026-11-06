@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ExpressionSpecification, GeoJSONSource } from "maplibre-gl";
-import { bboxContains, isAbortError, padBBox, type BBox } from "@/lib/gis/cagis";
+import { bboxContains, isAbortError, normalizeViewport, padBBox, type BBox } from "@/lib/gis/cagis";
 import {
   CONFIDENCE_METERS_PER_POINT,
   K_MIN_RESPONDENTS,
@@ -107,12 +107,7 @@ export function ValerieSentimentLayer() {
       }
 
       const b = activeMap.getBounds();
-      const viewport: BBox = [
-        Math.max(-180, b.getWest()),
-        Math.max(-90, b.getSouth()),
-        Math.min(180, b.getEast()),
-        Math.min(90, b.getNorth()),
-      ];
+      const viewport = normalizeViewport(b.getWest(), b.getSouth(), b.getEast(), b.getNorth());
       if (loaded && bboxContains(loaded.bbox, viewport) && Date.now() - loaded.at < MAX_DATA_AGE_MS) return;
 
       controller?.abort();

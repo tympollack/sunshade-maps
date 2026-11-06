@@ -1,4 +1,5 @@
 import { getServerSupabase } from "@/lib/supabase/server";
+import type { BBox } from "@/lib/gis/cagis";
 import { parseBBoxParam } from "@/lib/patchwork/nodes";
 import {
   parseCellParam,
@@ -27,23 +28,22 @@ export async function GET(request: Request) {
   }
 
   const cellParam = params.get("h3");
-  let cells: string[];
+  // Cheap, allocation-free validation only. The expensive H3 coverage is computed after the
+  // session check so unauthenticated callers cannot make the server do cell-generation work.
+  let singleCell: string | null = null;
+  let bbox: BBox | null = null;
   if (cellParam !== null) {
     const cell = parseCellParam(cellParam);
     if (!cell.ok) {
       return Response.json({ error: cell.error }, { status: 400 });
     }
-    cells = [cell.cell];
+    singleCell = cell.cell;
   } else {
     const parsed = parseBBoxParam(params.get("bbox"));
     if (!parsed.ok) {
       return Response.json({ error: parsed.error }, { status: 400 });
     }
-    const cover = viewportCells(parsed.bbox);
-    if (!cover.ok) {
-      return Response.json({ error: cover.error }, { status: 400 });
-    }
-    cells = cover.cells;
+    bbox = parsed.bbox;
   }
 
   const supabase = await getServerSupabase();
@@ -54,6 +54,17 @@ export async function GET(request: Request) {
   const { data: userData, error: authError } = await supabase.auth.getUser();
   if (authError || !userData.user) {
     return Response.json({ error: "Sign in to view community sentiment" }, { status: 401 });
+  }
+
+  let cells: string[];
+  if (singleCell !== null) {
+    cells = [singleCell];
+  } else {
+    const cover = viewportCells(bbox as BBox);
+    if (!cover.ok) {
+      return Response.json({ error: cover.error }, { status: 400 });
+    }
+    cells = cover.cells;
   }
 
   const { data, error } = await supabase.schema("valerie").rpc("h3_sentiment_cells", {

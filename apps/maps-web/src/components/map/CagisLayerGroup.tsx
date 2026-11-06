@@ -9,6 +9,7 @@ import {
   fetchLayerFeatures,
   formatParcelAddress,
   isAbortError,
+  normalizeViewport,
   padBBox,
   queryZoningAtPoint,
   type BBox,
@@ -152,7 +153,7 @@ export function CagisLayerGroup() {
       }
 
       const bounds = activeMap.getBounds();
-      const viewport: BBox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+      const viewport = normalizeViewport(bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth());
       const current = loaded[key];
       if (current && bboxContains(current.bbox, viewport) && Math.abs(current.zoom - zoom) < ZOOM_REFETCH_DELTA) {
         return;

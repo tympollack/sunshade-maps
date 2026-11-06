@@ -29,16 +29,23 @@ export function JurisdictionProbe() {
       if (activeMap.getZoom() < MIN_ZOOM) return;
       const { lng, lat } = activeMap.getCenter().wrap();
       if (last && Math.abs(last.lng - lng) < MIN_MOVE_DEG && Math.abs(last.lat - lat) < MIN_MOVE_DEG) return;
-      last = { lng, lat };
       controller?.abort();
       const current = new AbortController();
       controller = current;
-      fetch(`/api/v1/spatial/jurisdiction?lng=${lng.toFixed(5)}&lat=${lat.toFixed(5)}`, { signal: current.signal }).catch(
-        (error: unknown) => {
+      // `last` is only advanced once the lookup SUCCEEDS, so a failed or aborted probe is retried
+      // on the next map move instead of suppressing discovery for the surrounding ~5 km.
+      fetch(`/api/v1/spatial/jurisdiction?lng=${lng.toFixed(5)}&lat=${lat.toFixed(5)}`, { signal: current.signal })
+        .then((response) => {
+          if (!response.ok) {
+            console.error(`[maps-web] jurisdiction probe failed: HTTP ${response.status}`);
+            return;
+          }
+          last = { lng, lat };
+        })
+        .catch((error: unknown) => {
           if (isAbortError(error) || current.signal.aborted) return;
           console.error("[maps-web] jurisdiction probe failed:", error);
-        },
-      );
+        });
     };
     const schedule = () => {
       clearTimeout(debounce);
