@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+ * SunShade Tech-Blueprint tokens (mirrors src/lib/theme.ts)
+ * Navy canvas · Cornflower linework · Cyan accents · 0px corners
+ * ------------------------------------------------------------------ */
+@theme {
+  --color-navy: #0B132B;
+  --color-navy-deep: #070D1F;
+  --color-navy-raised: #13204A;
+  --color-cornflower: #4A90E2;
+  --color-cyan: #00E5FF;
+  --color-ink: #DCE8FA;
+  --color-ink-muted: #7F95B8;
+
+  /* Blueprint drafting: square corners everywhere. */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-radius: 0;
+  }
+
+  html,
+  body {
+    height: 100%;
+    background: var(--color-navy);
+    color: var(--color-ink);
+  }
+}
+
+@layer components {
+  .hud-panel {
+    background: color-mix(in srgb, var(--color-navy) 88%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-cornflower) 70%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-navy-deep) 80%, transparent);
+    backdrop-filter: blur(4px);
+  }
+
+  .hud-label {
+    color: var(--color-cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 0.625rem;
+  }
+}
+
+/* MapLibre chrome restyled to match the blueprint sheet. */
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  background: color-mix(in srgb, var(--color-navy) 85%, transparent) !important;
+  color: var(--color-ink-muted);
+  border-radius: 0 !important;
+}
+
+.maplibregl-ctrl-attrib a {
+  color: var(--color-cornflower);
+}
+
+.maplibregl-popup-content {
+  background: var(--color-navy);
+  color: var(--color-ink);
+  border: 1px solid var(--color-cornflower);
+  border-radius: 0;
+  padding: 6px 10px;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+}
+
+.maplibregl-popup-tip {
+  display: none;
+}
+
+/* Slide-out technical drawer (Parcel Inspector). */
+@keyframes hud-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(-1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.hud-drawer {
+  animation: hud-drawer-in 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-drawer {
+    animation: none;
+  }
+}
