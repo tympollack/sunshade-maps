@@ -58,6 +58,7 @@ const CLUSTER_COLOR: ExpressionSpecification = [
 ];
 
 type Status =
+  | { state: "hidden" }
   | { state: "below-min-zoom" }
   | { state: "loading" }
   | { state: "loaded"; count: number; truncated: boolean }
@@ -101,6 +102,7 @@ function toSelection(props: Record<string, unknown>, lng: number, lat: number): 
 export function PatchworkNodeLayer() {
   const { map, selectedNode, setSelectedNode } = useInspector();
   const [status, setStatus] = useState<Status>({ state: "below-min-zoom" });
+  const [visible, setVisible] = useState(true);
 
   // The Inspector drawer can clear the selection from outside this component; drop the node
   // highlight and the parcel outline too.
@@ -111,7 +113,7 @@ export function PatchworkNodeLayer() {
   }, [map, selectedNode]);
 
   useEffect(() => {
-    if (!map) return;
+    if (!map || !visible) return;
     const activeMap = map;
 
     activeMap.addSource(SOURCE, {
@@ -373,14 +375,38 @@ export function PatchworkNodeLayer() {
         if (activeMap.getSource(id)) activeMap.removeSource(id);
       });
     };
-  }, [map, setSelectedNode]);
+  }, [map, setSelectedNode, visible]);
 
   if (!map) return null;
 
   return (
-    <LayerPanel>
-      <div className="hud-label">PatchWork · Verified Nodes</div>
-      <div className="mt-1 flex justify-between gap-3 text-ink-muted">
+    <LayerPanel interactive>
+      <div className="flex items-center justify-between gap-3">
+        <div className="hud-label">PatchWork · Verified Nodes</div>
+        <label className="flex cursor-pointer items-center gap-1.5 text-ink-muted">
+          <input
+            type="checkbox"
+            checked={visible}
+            onChange={(e) => {
+              setVisible(e.target.checked);
+              if (!e.target.checked) setStatus({ state: "hidden" });
+            }}
+            className="accent-cyan"
+          />
+          Show
+        </label>
+      </div>
+      {visible && (
+        <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-ink-muted" aria-label="Decay legend">
+          {(["green", "yellow", "red", "unknown"] as const).map((d) => (
+            <li key={d} className="flex items-center gap-1">
+              <span aria-hidden className="inline-block h-2 w-2" style={{ backgroundColor: DECAY_COLORS[d] }} />
+              {d === "unknown" ? "no expiry" : d}
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-1 flex justify-between gap-3 text-ink-muted" aria-live="polite">
         <span>In view</span>
         <span className="tabular-nums text-ink">{describe(status)}</span>
       </div>
@@ -390,6 +416,8 @@ export function PatchworkNodeLayer() {
 
 function describe(s: Status): string {
   switch (s.state) {
+    case "hidden":
+      return "layer hidden";
     case "below-min-zoom":
       return `zoom ≥ ${MIN_ZOOM}`;
     case "loading":
