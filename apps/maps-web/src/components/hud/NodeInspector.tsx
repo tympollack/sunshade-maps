@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { isAbortError, queryParcelAtPoint } from "@/lib/gis/cagis";
-import { snapPointToParcel, type SnapResult } from "@/lib/patchwork/snap";
+import { isAbortError, queryParcelsNear } from "@/lib/gis/cagis";
+import { SNAP_TOLERANCE_METERS, resolveParcelSnap, type SnapResult } from "@/lib/patchwork/snap";
 import { compareHash, isValidSha256, sha256Hex, type HashVerification } from "@/lib/patchwork/verify";
 import { formatCoordinate } from "@/lib/map/coordinates";
 import { NOT_RECORDED } from "@/lib/inspector/format";
@@ -17,10 +17,11 @@ function formatTimestamp(iso: string | null): string {
 type SnapState =
   | { status: "loading" }
   | { status: "no-parcel" }
+  | { status: "ambiguous"; candidates: number }
   | { status: "error" }
   | { status: "ready"; result: SnapResult };
 
-/** Looks up the CAGIS parcel under the node and snaps the pin to it (Turf.js). */
+/** Looks up CAGIS parcels within GPS-drift tolerance of the node and snaps the pin (Turf.js). */
 function usePinSnap(node: PatchworkNodeSelection): SnapState {
   const { node_id, lng, lat } = node;
   const [result, setResult] = useState<{ key: string; state: Exclude<SnapState, { status: "loading" }> } | null>(null);
@@ -28,11 +29,19 @@ function usePinSnap(node: PatchworkNodeSelection): SnapState {
 
   useEffect(() => {
     const controller = new AbortController();
-    queryParcelAtPoint({ lng, lat }, { signal: controller.signal })
-      .then((parcel) => {
+    queryParcelsNear({ lng, lat }, SNAP_TOLERANCE_METERS, { signal: controller.signal })
+      .then((parcels) => {
         if (controller.signal.aborted) return;
-        const snap = parcel ? snapPointToParcel({ lng, lat }, parcel) : null;
-        setResult({ key, state: snap ? { status: "ready", result: snap } : { status: "no-parcel" } });
+        const outcome = resolveParcelSnap({ lng, lat }, parcels);
+        setResult({
+          key,
+          state:
+            outcome.kind === "resolved"
+              ? { status: "ready", result: outcome.result }
+              : outcome.kind === "ambiguous"
+                ? { status: "ambiguous", candidates: outcome.candidates }
+                : { status: "no-parcel" },
+        });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted || isAbortError(error)) return;
@@ -115,7 +124,8 @@ export function NodeDetails({ node }: { node: PatchworkNodeSelection }) {
         <Row label="Location">{formatCoordinate({ lng: node.lng, lat: node.lat })}</Row>
         <Row label="Parcel-snapped pin">
           {snap.status === "loading" && "Resolving parcel…"}
-          {snap.status === "no-parcel" && "No CAGIS parcel at this location"}
+          {snap.status === "no-parcel" && `No CAGIS parcel within ${SNAP_TOLERANCE_METERS} m`}
+          {snap.status === "ambiguous" && `Ambiguous: ${snap.candidates} parcels within ${SNAP_TOLERANCE_METERS} m, not snapped`}
           {snap.status === "error" && "Parcel lookup unavailable"}
           {snap.status === "ready" &&
             (snap.result.snapped

@@ -274,6 +274,28 @@ export async function queryZoningAtPoint(point: LngLat, options: QueryOptions = 
 }
 
 /** Resolves the parcel polygon containing a coordinate, or `null` when none does. */
+/**
+ * GeoJSON parcels intersecting a square of `toleranceMeters` around `point` (GPS-drift search).
+ * Capped at 10 so a dense block cannot return an unbounded payload.
+ */
+export async function queryParcelsNear(
+  point: LngLat,
+  toleranceMeters: number,
+  options: QueryOptions = {},
+): Promise<GeoJSON.Feature[]> {
+  const dLat = toleranceMeters / 111_000;
+  const dLng = dLat / Math.max(0.01, Math.cos((point.lat * Math.PI) / 180));
+  const params = baseParams(CAGIS_LAYERS.parcels);
+  params.set("geometry", [point.lng - dLng, point.lat - dLat, point.lng + dLng, point.lat + dLat].join(","));
+  params.set("geometryType", "esriGeometryEnvelope");
+  params.set("returnGeometry", "true");
+  params.set("geometryPrecision", "6");
+  params.set("resultRecordCount", "10");
+  params.set("f", "geojson");
+  const url = `${CAGIS_BASE_URL}/${CAGIS_LAYERS.parcels.path}/query?${params.toString()}`;
+  return parseFeatureCollection(await getJson(url, options)).features;
+}
+
 export async function queryParcelAtPoint(point: LngLat, options: QueryOptions = {}): Promise<GeoJSON.Feature | null> {
   const { features } = parseFeatureCollection(await getJson(buildParcelPointQueryUrl(point), options));
   return features[0] ?? null;

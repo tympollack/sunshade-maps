@@ -46,3 +46,31 @@ export function snapPointToParcel(pin: LngLat, parcel: GeoJSON.Feature): SnapRes
   if (!best) return null;
   return { point: { lng: best.lng, lat: best.lat }, snapped: true, distanceMeters: best.dist };
 }
+
+/** Max GPS drift we are willing to correct; also the parcel search radius. */
+export const SNAP_TOLERANCE_METERS = 15;
+
+export type ParcelSnapOutcome =
+  | { kind: "none" }
+  | { kind: "ambiguous"; candidates: number }
+  | { kind: "resolved"; result: SnapResult };
+
+/**
+ * Resolves a node pin against the parcels found within the drift tolerance. Only an unambiguous
+ * single candidate is used: the parcel under the raw pin is not assumed correct when a neighbour
+ * is also within tolerance, so ambiguity is reported rather than guessed.
+ */
+export function resolveParcelSnap(
+  pin: LngLat,
+  parcels: readonly GeoJSON.Feature[],
+  toleranceMeters = SNAP_TOLERANCE_METERS,
+): ParcelSnapOutcome {
+  const candidates: SnapResult[] = [];
+  for (const parcel of parcels) {
+    const snap = snapPointToParcel(pin, parcel);
+    if (snap && snap.distanceMeters <= toleranceMeters) candidates.push(snap);
+  }
+  if (candidates.length === 0) return { kind: "none" };
+  if (candidates.length > 1) return { kind: "ambiguous", candidates: candidates.length };
+  return { kind: "resolved", result: candidates[0] };
+}
