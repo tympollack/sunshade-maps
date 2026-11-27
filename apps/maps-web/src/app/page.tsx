@@ -4,6 +4,7 @@ import { JurisdictionProbe } from "@/components/map/JurisdictionProbe";
 import { ValerieSentimentLayer } from "@/components/map/ValerieSentimentLayer";
 import { CagisLayerGroup } from "@/components/map/CagisLayerGroup";
 import { PatchworkNodeLayer } from "@/components/map/PatchworkNodeLayer";
+import { DeepLinkHandoff } from "@/components/map/DeepLinkHandoff";
 import { InspectorDrawer } from "@/components/hud/InspectorDrawer";
 import { AuthBadge } from "@/components/hud/AuthBadge";
 
@@ -17,6 +18,7 @@ export default function Home() {
         <CagisLayerGroup />
         <PatchworkNodeLayer />
         <InspectorDrawer />
+        <DeepLinkHandoff />
       </MapShell>
 
       <header className="hud-panel pointer-events-none absolute left-4 top-4 px-3 py-2">
