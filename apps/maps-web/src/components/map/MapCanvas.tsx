@@ -1,10 +1,17 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Map as MapLibreMap, type MapMouseEvent } from "maplibre-gl";
+import { Map as MapLibreMap, setWorkerUrl, type MapMouseEvent } from "maplibre-gl";
 import { blueprintStyle, DEFAULT_VIEW } from "@/lib/map/blueprintStyle";
 import { wrapLng } from "@/lib/map/coordinates";
 import { useInspector } from "./InspectorContext";
+
+/**
+ * Static module worker path copied from `maplibre-gl/dist` into `public/maplibre/`.
+ * MapLibre v6 resolves its default worker relative to `import.meta.url`, which under
+ * Next.js/Turbopack becomes a `file://` shim URL and falls back to `""` (`/` HTML).
+ */
+export const MAPLIBRE_WORKER_URL = "/maplibre/maplibre-gl-worker.mjs";
 
 /**
  * Full-screen MapLibre GL canvas.
@@ -20,6 +27,8 @@ export function MapCanvas() {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    setWorkerUrl(MAPLIBRE_WORKER_URL);
 
     const map = new MapLibreMap({
       container,
