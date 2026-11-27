@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useInspector, type ParcelSelection } from "@/components/map/InspectorContext";
+import { FieldVerifyQr } from "@/components/hud/FieldVerifyQr";
 import { NodeDetails, Row } from "@/components/hud/NodeInspector";
 import { isAbortError } from "@/lib/gis/cagis";
 import { formatCoordinate } from "@/lib/map/coordinates";
@@ -140,6 +141,7 @@ export function InspectorDrawer() {
             </div>
           </section>
         )}
+        {selectedNode && <FieldVerifyQr node={selectedNode} />}
       </div>
     </aside>
   );
