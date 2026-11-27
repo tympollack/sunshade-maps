@@ -13,7 +13,7 @@ export function FieldVerifyQr({ node }: { node: PatchworkNodeSelection }) {
   useEffect(() => {
     if (!url) return;
     let cancelled = false;
-    QRCode.toDataURL(url, { margin: 1, width: 192, color: { dark: "#0B1B3A", light: "#FFFFFF" } })
+    QRCode.toDataURL(url, { margin: 4, width: 192, color: { dark: "#0B1B3A", light: "#FFFFFF" } })
       .then((dataUrl) => {
         if (!cancelled) setQr({ url, dataUrl });
       })
