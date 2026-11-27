@@ -3,8 +3,10 @@ import {
   DECAY_SEVERITY,
   MAX_BBOX_SPAN_DEGREES,
   compassLabel,
+  filterByDecay,
   nodesToFeatureCollection,
   parseBBoxParam,
+  parseDecayFilter,
   toDecayState,
   type NodeRow,
 } from "./nodes";
@@ -111,5 +113,23 @@ describe("compassLabel", () => {
     expect(compassLabel(271.5)).toBe("W");
     expect(compassLabel(359)).toBe("N");
     expect(compassLabel(-90)).toBe("W");
+  });
+});
+
+describe("decay filter", () => {
+  it("treats a missing filter as all states", () => {
+    expect(parseDecayFilter(null)).toEqual({ ok: true, states: null });
+    expect(parseDecayFilter("")).toEqual({ ok: true, states: null });
+  });
+  it("parses and rejects values", () => {
+    const ok = parseDecayFilter("Red, yellow");
+    expect(ok.ok && ok.states && [...ok.states].sort()).toEqual(["red", "yellow"]);
+    expect(parseDecayFilter("purple").ok).toBe(false);
+  });
+  it("filters features by state", () => {
+    const fc = nodesToFeatureCollection([row({ decay_state: "green" }), row({ node_id: "b", decay_state: "red" })]);
+    const filtered = filterByDecay(fc, new Set(["red"]));
+    expect(filtered.features.map((f) => f.properties.node_id)).toEqual(["b"]);
+    expect(filterByDecay(fc, null)).toBe(fc);
   });
 });

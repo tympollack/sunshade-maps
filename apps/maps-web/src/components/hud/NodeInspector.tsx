@@ -1,5 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { isAbortError, queryParcelsNear } from "@/lib/gis/cagis";
+import { SNAP_TOLERANCE_METERS, resolveParcelSnap, type SnapResult } from "@/lib/patchwork/snap";
+import { compareHash, isValidSha256, sha256Hex, type HashVerification } from "@/lib/patchwork/verify";
 import { formatCoordinate } from "@/lib/map/coordinates";
 import { NOT_RECORDED } from "@/lib/inspector/format";
 import { DECAY_COLORS, compassLabel, type PatchworkNodeSelection } from "@/lib/patchwork/nodes";
@@ -10,9 +14,96 @@ function formatTimestamp(iso: string | null): string {
   return Number.isNaN(d.getTime()) ? NOT_RECORDED : d.toLocaleString();
 }
 
-/** Details of a selected PatchWork node: sightline azimuth, timestamp, verification hash. */
+type SnapState =
+  | { status: "loading" }
+  | { status: "no-parcel" }
+  | { status: "ambiguous"; candidates: number }
+  | { status: "error" }
+  | { status: "ready"; result: SnapResult };
+
+/** Looks up CAGIS parcels within GPS-drift tolerance of the node and snaps the pin (Turf.js). */
+function usePinSnap(node: PatchworkNodeSelection): SnapState {
+  const { node_id, lng, lat } = node;
+  const [result, setResult] = useState<{ key: string; state: Exclude<SnapState, { status: "loading" }> } | null>(null);
+  const key = `${node_id}:${lng}:${lat}`;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    queryParcelsNear({ lng, lat }, SNAP_TOLERANCE_METERS, { signal: controller.signal })
+      .then((parcels) => {
+        if (controller.signal.aborted) return;
+        const outcome = resolveParcelSnap({ lng, lat }, parcels);
+        setResult({
+          key,
+          state:
+            outcome.kind === "resolved"
+              ? { status: "ready", result: outcome.result }
+              : outcome.kind === "ambiguous"
+                ? { status: "ambiguous", candidates: outcome.candidates }
+                : { status: "no-parcel" },
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted || isAbortError(error)) return;
+        console.error("[maps-web] pin snap parcel lookup failed:", error);
+        setResult({ key, state: { status: "error" } });
+      });
+    return () => controller.abort();
+  }, [key, lng, lat]);
+
+  return result?.key === key ? result.state : { status: "loading" };
+}
+
+function HashVerifier({ recorded }: { recorded: string | null }) {
+  const [state, setState] = useState<{ fileName: string; verification: HashVerification } | { error: string } | null>(null);
+  const recordedValid = isValidSha256(recorded);
+
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      const computed = await sha256Hex(await file.arrayBuffer());
+      setState({ fileName: file.name, verification: compareHash(recorded, computed) });
+    } catch (error) {
+      console.error("[maps-web] evidence hashing failed:", error);
+      setState({ error: "Could not read that file" });
+    }
+  };
+
+  return (
+    <div className="mt-2 border-t border-cornflower/40 pt-2">
+      <div className="hud-label">Verify evidence (SHA-256)</div>
+      {!recorded ? (
+        <p className="mt-1 text-ink-muted">{NOT_RECORDED}: no hash to verify against</p>
+      ) : !recordedValid ? (
+        <p className="mt-1 text-ink-muted">Recorded hash is not a valid SHA-256 digest</p>
+      ) : (
+        <>
+          <input
+            type="file"
+            aria-label="Evidence file to hash"
+            onChange={(e) => void onFile(e.target.files?.[0])}
+            className="mt-1 block w-full text-ink-muted file:mr-2 file:border file:border-cornflower file:bg-transparent file:px-1.5 file:text-ink-muted"
+          />
+          <p className="mt-0.5 text-[10px] text-ink-muted">Hashed locally in your browser; the file is never uploaded.</p>
+          <div aria-live="polite" className="mt-1">
+            {state && "error" in state && <span className="text-ink-muted">{state.error}</span>}
+            {state && "verification" in state && state.verification.status === "match" && (
+              <span style={{ color: DECAY_COLORS.green }}>✓ Matches recorded hash ({state.fileName})</span>
+            )}
+            {state && "verification" in state && state.verification.status === "mismatch" && (
+              <span style={{ color: DECAY_COLORS.red }}>✗ Does not match recorded hash ({state.fileName})</span>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Details of a selected PatchWork node: azimuth, timestamp, hash verification, parcel-snapped pin. */
 export function NodeDetails({ node }: { node: PatchworkNodeSelection }) {
   const { decay_state, az_heading, verified_at, verification_hash, expires_at_yellow, expires_at_red } = node;
+  const snap = usePinSnap(node);
 
   return (
     <div>
@@ -31,7 +122,18 @@ export function NodeDetails({ node }: { node: PatchworkNodeSelection }) {
         {expires_at_yellow && <Row label="Warns">{formatTimestamp(expires_at_yellow)}</Row>}
         {expires_at_red && <Row label="Expires">{formatTimestamp(expires_at_red)}</Row>}
         <Row label="Location">{formatCoordinate({ lng: node.lng, lat: node.lat })}</Row>
+        <Row label="Parcel-snapped pin">
+          {snap.status === "loading" && "Resolving parcel…"}
+          {snap.status === "no-parcel" && `No CAGIS parcel within ${SNAP_TOLERANCE_METERS} m`}
+          {snap.status === "ambiguous" && `Ambiguous: ${snap.candidates} parcels within ${SNAP_TOLERANCE_METERS} m, not snapped`}
+          {snap.status === "error" && "Parcel lookup unavailable"}
+          {snap.status === "ready" &&
+            (snap.result.snapped
+              ? `${formatCoordinate(snap.result.point)} (moved ${snap.result.distanceMeters.toFixed(1)} m)`
+              : "On parcel, no adjustment needed")}
+        </Row>
       </dl>
+      <HashVerifier key={node.node_id} recorded={verification_hash} />
     </div>
   );
 }

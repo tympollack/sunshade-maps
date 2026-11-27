@@ -142,3 +142,25 @@ export function compassLabel(azimuth: number): string {
   const normalized = ((azimuth % 360) + 360) % 360;
   return points[Math.round(normalized / 22.5) % 16];
 }
+
+
+export type DecayFilterResult = { ok: true; states: ReadonlySet<DecayState> | null } | { ok: false; error: string };
+
+/** Parses an optional `decay=green,yellow,red,unknown` filter; absent means "all states". */
+export function parseDecayFilter(raw: string | null): DecayFilterResult {
+  if (raw === null || raw.trim() === "") return { ok: true, states: null };
+  const states = new Set<DecayState>();
+  for (const part of raw.split(",").map((p) => p.trim().toLowerCase())) {
+    if (!DECAY_STATES.has(part)) {
+      return { ok: false, error: `decay must be a comma-separated list of: green, yellow, red, unknown` };
+    }
+    states.add(part as DecayState);
+  }
+  return { ok: true, states };
+}
+
+/** Keeps only features whose decay state is in `states` (null = keep all). */
+export function filterByDecay(collection: PatchworkNodeCollection, states: ReadonlySet<DecayState> | null): PatchworkNodeCollection {
+  if (!states) return collection;
+  return { ...collection, features: collection.features.filter((f) => states.has(f.properties.decay_state)) };
+}
