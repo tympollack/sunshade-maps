@@ -10,6 +10,7 @@ build/
 dist/
 *.tsbuildinfo
 next-env.d.ts
+apps/maps-web/public/maplibre/
 
 # env files (commit only .env.example)
 .env
